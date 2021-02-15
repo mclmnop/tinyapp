@@ -3,12 +3,21 @@ const app = express();
 const PORT = 8080;
 const bodyParser = require('body-parser');
 
+//Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
 
-const generateRandomString = function(body) {
+//
+const generateRandomString = function(longURL) {
   const shortURL = (Math.random()*1e32).toString(36).substr(0,7);
+  saveURLsToDatabase(shortURL, longURL)
   return shortURL;
+}
 
+//adds new key value pair to database object shortURL : LongURL
+const saveURLsToDatabase = function(shortURL, longURL) {
+  urlDatabase[shortURL] = longURL;
+  console.log(urlDatabase)
+  return urlDatabase;
 }
 
 const urlDatabase = {
@@ -31,15 +40,22 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body, 'RESP', res.body);
-  const output = generateRandomString(req.body);
+  console.log('User input here', req.body);
+  const output = generateRandomString(req.body.longURL);
   
-  res.send(output)
+  res.redirect(`/urls/${output}`)
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
+});
+
+app.get("/u/:shortURL", (req, res) => {
+  const shortURL = req.query.params
+  const longURL = ur
+  // const longURL = ...
+  res.redirect(longURL);
 });
 
 app.listen(PORT, () => {
