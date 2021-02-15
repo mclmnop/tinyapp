@@ -6,7 +6,14 @@ const bodyParser = require('body-parser');
 //Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
 
-//
+app.set('view engine', "ejs");
+
+const urlDatabase = {
+  "b2xVn2": "http://www.lighthouselabs.ca",
+  "9sm5xK": "http://www.google.com"
+}
+
+//generates 8 characters string for short url, calls the save to databe se funciton
 const generateRandomString = function(longURL) {
   const shortURL = (Math.random()*1e32).toString(36).substr(0,7);
   saveURLsToDatabase(shortURL, longURL)
@@ -16,16 +23,10 @@ const generateRandomString = function(longURL) {
 //adds new key value pair to database object shortURL : LongURL
 const saveURLsToDatabase = function(shortURL, longURL) {
   urlDatabase[shortURL] = longURL;
-  console.log(urlDatabase)
   return urlDatabase;
 }
 
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-}
 
-app.set('view engine', "ejs")
 app.get('/', (req, res) => {
   res.send("Hello!");
 });
@@ -39,10 +40,9 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+//takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL 
 app.post("/urls", (req, res) => {
-  console.log('User input here', req.body);
   const output = generateRandomString(req.body.longURL);
-  
   res.redirect(`/urls/${output}`)
 });
 
