@@ -26,16 +26,18 @@ const saveURLsToDatabase = function(shortURL, longURL) {
   return urlDatabase;
 }
 
-
+// says hello
 app.get('/', (req, res) => {
   res.send("Hello!");
 });
 
+//urls list
 app.get("/urls", (req, res) => {
   const templateVars =  { urls: urlDatabase}
   res.render('urls_index.ejs' , templateVars);
 })
 
+// form to enter new URL
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
@@ -46,17 +48,22 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${output}`)
 });
 
+//shows content of tiny and long 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
 });
 
+//redirects to long URL
 app.get("/u/:shortURL", (req, res) => {
-  console.log(req.params)
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL]
-  // const longURL = ...
-  res.redirect(longURL);
+  const longURL = urlDatabase[shortURL];
+  if (urlDatabase[shortURL]) {
+    res.redirect(longURL);
+  }
+  res.writeHead(404, {"Content-Type": "text/plain"});
+  res.write("This short URL does not exist");
+  res.end();
 });
 
 app.listen(PORT, () => {
