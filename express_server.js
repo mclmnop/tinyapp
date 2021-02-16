@@ -7,7 +7,6 @@ const cookieParser = require('cookie-parser');
 
 //Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
-
 app.set('view engine', "ejs");
 
 const urlDatabase = {
@@ -32,6 +31,18 @@ const deleteURLsFromDatabase = function(shortURL) {
   delete urlDatabase[shortURL];
   return urlDatabase;
 };
+
+
+///////-***********ROUTES***************
+
+app.post("/login", (req, res) => {
+  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
+  const user = req.body.userName;
+  res.cookie(user)
+  console.log(user)
+  //console.log(urlDatabase);
+  res.redirect('/urls');
+});
 
 // says hello
 app.get('/', (req, res) => {
