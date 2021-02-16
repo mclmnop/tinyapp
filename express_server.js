@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 //Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', "ejs");
+app.use(cookieParser());
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -37,9 +38,9 @@ const deleteURLsFromDatabase = function(shortURL) {
 
 app.post("/login", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
-  const user = req.body.userName;
-  res.cookie(user)
-  console.log(user)
+  const user = req.body.username;
+  res.cookie('username', user)
+  //console.log(req.body.username)
   //console.log(urlDatabase);
   res.redirect('/urls');
 });
@@ -51,13 +52,16 @@ app.get('/', (req, res) => {
 
 //urls list
 app.get("/urls", (req, res) => {
-  const templateVars =  { urls: urlDatabase};
+  const templateVars =  { urls: urlDatabase, users: req.cookies};
+  console.log(req.cookies)
   res.render('urls_index.ejs' , templateVars);
 });
 
 // form to enter new URL
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars =  { urls: urlDatabase, users: req.cookies}
+  res.render("urls_new", templateVars);
+  //res.render("urls_new", templateVars);
 });
 
 //takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL
@@ -74,7 +78,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //shows content of tiny and long
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], users: req.cookies};
   res.render("urls_show", templateVars);
 });
 
