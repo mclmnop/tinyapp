@@ -11,20 +11,20 @@ app.set('view engine', "ejs");
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
-}
+};
 
 //generates 8 characters string for short url, calls the save to databe se funciton
 const generateRandomString = function(longURL) {
-  const shortURL = (Math.random()*1e32).toString(36).substr(0,7);
-  saveURLsToDatabase(shortURL, longURL)
+  const shortURL = (Math.random() * 1e32).toString(36).substr(0,7);
+  saveURLsToDatabase(shortURL, longURL);
   return shortURL;
-}
+};
 
 //adds new key value pair to database object shortURL : LongURL
 const saveURLsToDatabase = function(shortURL, longURL) {
   urlDatabase[shortURL] = longURL;
   return urlDatabase;
-}
+};
 
 // says hello
 app.get('/', (req, res) => {
@@ -33,22 +33,22 @@ app.get('/', (req, res) => {
 
 //urls list
 app.get("/urls", (req, res) => {
-  const templateVars =  { urls: urlDatabase}
+  const templateVars =  { urls: urlDatabase};
   res.render('urls_index.ejs' , templateVars);
-})
+});
 
 // form to enter new URL
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
-//takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL 
+//takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL
 app.post("/urls", (req, res) => {
   const output = generateRandomString(req.body.longURL);
-  res.redirect(`/urls/${output}`)
+  res.redirect(`/urls/${output}`);
 });
 
-//shows content of tiny and long 
+//shows content of tiny and long
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
@@ -68,4 +68,4 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
-})
+});
