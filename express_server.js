@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const PORT = 8080;
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+
 
 //Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
