@@ -26,6 +26,11 @@ const saveURLsToDatabase = function(shortURL, longURL) {
   return urlDatabase;
 };
 
+const deleteURLsFromDatabase = function(shortURL) {
+  delete urlDatabase[shortURL];
+  return urlDatabase;
+};
+
 // says hello
 app.get('/', (req, res) => {
   res.send("Hello!");
@@ -46,6 +51,12 @@ app.get("/urls/new", (req, res) => {
 app.post("/urls", (req, res) => {
   const output = generateRandomString(req.body.longURL);
   res.redirect(`/urls/${output}`);
+});
+
+//shows content of tiny and long
+app.post("/urls/:shortURL/delete", (req, res) => {
+  deleteURLsFromDatabase(req.params.shortURL);
+  res.redirect('/urls');
 });
 
 //shows content of tiny and long
