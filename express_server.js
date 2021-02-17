@@ -50,6 +50,17 @@ const saveUserToDatabase = function(id, email, password) {
   return newUser;
 };
 
+const findUser = function(email, users) {
+  const userArray = Object.keys(users);
+  for (key of userArray){
+    if (email === users[key].email)
+    {
+      return users[key]
+    }
+  };
+  return false;
+};
+
 const deleteURLsFromDatabase = function(shortURL) {
   delete urlDatabase[shortURL];
   return urlDatabase;
@@ -57,6 +68,13 @@ const deleteURLsFromDatabase = function(shortURL) {
 
 
 ///////-***********ROUTES***************
+
+app.get("/login", (req, res) => {
+  //const user = req.body.username;
+  //res.cookie('username', user);
+  res.send("wtf")
+  res.render('/register');
+});
 
 app.post("/login", (req, res) => {
   const user = req.body.username;
@@ -83,10 +101,15 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const randomID = generateRandomString();
   const {email, pwd} = req.body;
+  if(pwd === '') {
+    res.status(400).send('No empty passwords allowed');
+  } else if (findUser(email, users)) {
+    res.status(400).send('Already existing user');
+  } else {
   const newUser = saveUserToDatabase(randomID, email, pwd);
-  //console.log(newUser);
   res.cookie('user_id', newUser.email);
   res.redirect("/urls");
+  }
 });
 
 //urls list
