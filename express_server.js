@@ -80,7 +80,7 @@ const deleteURLsFromDatabase = function(shortURL) {
 
 app.post("/logout", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
-  res.clearCookie('username');
+  res.clearCookie('user_id');
   res.redirect('/urls');
 });
 
@@ -113,7 +113,8 @@ app.post("/login", (req, res) => {
 
 //registration form
 app.get('/register', (req, res) => {
-  res.render("register");
+  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
+  res.render("register", templateVars);
 });
 
 app.post('/register', (req, res) => {
