@@ -15,17 +15,39 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur"
+  },
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk"
+  }
+}
+
 //generates 8 characters string for short url, calls the save to databe se funciton
-const generateRandomString = function(longURL) {
-  const shortURL = (Math.random() * 1e32).toString(36).substr(0,7);
-  saveURLsToDatabase(shortURL, longURL);
-  return shortURL;
+const generateRandomString = function() {
+  const randomString = (Math.random() * 1e32).toString(36).substr(0,7);
+  return randomString;
 };
 
 //adds new key value pair to database object shortURL : LongURL
 const saveURLsToDatabase = function(shortURL, longURL) {
   urlDatabase[shortURL] = longURL;
   return urlDatabase;
+};
+
+const saveUserToDatabase = function(id, email, password) {
+  users[id] = {
+    id,
+    email,
+    password
+  }
+  //console.log(users);
+  return users;
 };
 
 const deleteURLsFromDatabase = function(shortURL) {
@@ -58,10 +80,18 @@ app.get('/register', (req, res) => {
   res.render("register");
 });
 
+app.post('/register', (req, res) => {
+  const randomID = generateRandomString();
+  const {email, pwd} = req.body;
+  saveUserToDatabase(randomID, email, pwd);
+  console.log(users);
+  res.redirect("/urls");
+});
+
 //urls list
 app.get("/urls", (req, res) => {
   const templateVars =  { urls: urlDatabase, users: req.cookies};
-  console.log(req.cookies);
+  //console.log(req.cookies);
   res.render('urls_index.ejs' , templateVars);
 });
 
@@ -74,8 +104,9 @@ app.get("/urls/new", (req, res) => {
 
 //takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL
 app.post("/urls", (req, res) => {
-  const output = generateRandomString(req.body.longURL);
-  res.redirect(`/urls/${output}`);
+  const shortURL = generateRandomString(req.body.longURL);
+  saveURLsToDatabase(shortURL, req.body.longURL);
+  res.redirect(`/urls/${shortURL}`);
 });
 
 //shows content of tiny and long
