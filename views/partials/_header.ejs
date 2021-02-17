@@ -9,10 +9,10 @@
         <a class="nav-item nav-link" href="/urls">My URLs</a>
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
         
-          <% if ( users.username) { %>
+          <% if (userInfo.user_id) { %>
             <div style= "position: absolute; right: 0px; top:8px">
               <form class="form-inline" action="/logout" method="POST">
-                  <p style="margin-bottom: 0rem; margin-right: 4px;">Logged in as: <%= users.username %> !</p>
+                  <p style="margin-bottom: 0rem; margin-right: 4px;">Logged in as: <%= userInfo.user_id %> !</p>
                   <button type="submit" class="btn btn-primary" style="background-color: rgba(0,0,0,0.0); border-color: #0f1010; color: #0f1010; margin-right: 4px; width:75px">Logout</button>
               </form>
             </div>
@@ -24,20 +24,8 @@
               </form>
             </div>
           <%} %>
-        
       </div>
     </div>
   </nav>
 </header>
 
-
-<!--
-
-          <div style="  position: absolute; right: 0px; top:-8px">
-          <form class="form-inline" action="/login" method="POST">
-              <input class="form-control" type="text" name="username" placeholder="Enter your name" style="width: 200px; margin: 1em">
-              <button type="submit" class="btn btn-primary">Login</button>
-              you are logged in a <%= users.username %>
-          </form>
-        </div>
--->

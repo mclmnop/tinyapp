@@ -41,13 +41,13 @@ const saveURLsToDatabase = function(shortURL, longURL) {
 };
 
 const saveUserToDatabase = function(id, email, password) {
-  users[id] = {
+  const newUser = users[id] = {
     id,
     email,
     password
   }
-  //console.log(users);
-  return users;
+  //console.log('newUser', newUser, Object.keys(users));
+  return newUser;
 };
 
 const deleteURLsFromDatabase = function(shortURL) {
@@ -83,21 +83,22 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const randomID = generateRandomString();
   const {email, pwd} = req.body;
-  saveUserToDatabase(randomID, email, pwd);
-  console.log(users);
+  const newUser = saveUserToDatabase(randomID, email, pwd);
+  //console.log(newUser);
+  res.cookie('user_id', newUser.email);
   res.redirect("/urls");
 });
 
 //urls list
 app.get("/urls", (req, res) => {
-  const templateVars =  { urls: urlDatabase, users: req.cookies};
-  //console.log(req.cookies);
+  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
+  console.log(req.cookies);
   res.render('urls_index.ejs' , templateVars);
 });
 
 // form to enter new URL
 app.get("/urls/new", (req, res) => {
-  const templateVars =  { urls: urlDatabase, users: req.cookies};
+  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
   res.render("urls_new", templateVars);
   //res.render("urls_new", templateVars);
 });
@@ -117,7 +118,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //shows content of tiny and long
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], users: req.cookies};
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userInfo: req.cookies};
   res.render("urls_show", templateVars);
 });
 
