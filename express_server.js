@@ -69,18 +69,8 @@ const deleteURLsFromDatabase = function(shortURL) {
 
 ///////-***********ROUTES***************
 
-app.get("/login", (req, res) => {
-  //const user = req.body.username;
-  //res.cookie('username', user);
-  res.send("wtf")
-  res.render('/register');
-});
 
-app.post("/login", (req, res) => {
-  const user = req.body.username;
-  res.cookie('username', user);
-  res.redirect('/urls');
-});
+
 
 app.post("/logout", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
@@ -92,6 +82,18 @@ app.post("/logout", (req, res) => {
 app.get('/', (req, res) => {
   res.send("Hello!");
 });
+
+app.get('/login', (req, res) => {
+  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
+  res.render("login", templateVars);
+});
+
+app.post("/login", (req, res) => {
+  const user = req.body.username;
+  res.cookie('username', user);
+  res.redirect('/urls');
+});
+
 
 //registration form
 app.get('/register', (req, res) => {
