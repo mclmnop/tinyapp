@@ -60,6 +60,12 @@ const findUser = function(email, users) {
   };
   return false;
 };
+const checkUserPassword = function(user, password) {
+  if (user.password === password) {
+    return true;
+  }
+  return false;
+};
 
 const deleteURLsFromDatabase = function(shortURL) {
   delete urlDatabase[shortURL];
@@ -89,9 +95,19 @@ app.get('/login', (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const user = req.body.username;
-  res.cookie('username', user);
-  res.redirect('/urls');
+  const {email, pwd} = req.body;
+  const currentUser = findUser(email, users);
+  if (currentUser) {
+    if (checkUserPassword(currentUser, pwd)) {
+      res.cookie('user_id', email);
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('Bad password');
+      
+    }
+  } else {
+    res.status(403).send('User Not found');
+  }
 });
 
 
