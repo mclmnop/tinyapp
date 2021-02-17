@@ -37,11 +37,14 @@ const deleteURLsFromDatabase = function(shortURL) {
 ///////-***********ROUTES***************
 
 app.post("/login", (req, res) => {
-  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   const user = req.body.username;
-  res.cookie('username', user)
-  //console.log(req.body.username)
-  //console.log(urlDatabase);
+  res.cookie('username', user);
+  res.redirect('/urls');
+});
+
+app.post("/logout", (req, res) => {
+  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
+  res.clearCookie('username');
   res.redirect('/urls');
 });
 
@@ -53,13 +56,13 @@ app.get('/', (req, res) => {
 //urls list
 app.get("/urls", (req, res) => {
   const templateVars =  { urls: urlDatabase, users: req.cookies};
-  console.log(req.cookies)
+  console.log(req.cookies);
   res.render('urls_index.ejs' , templateVars);
 });
 
 // form to enter new URL
 app.get("/urls/new", (req, res) => {
-  const templateVars =  { urls: urlDatabase, users: req.cookies}
+  const templateVars =  { urls: urlDatabase, users: req.cookies};
   res.render("urls_new", templateVars);
   //res.render("urls_new", templateVars);
 });
