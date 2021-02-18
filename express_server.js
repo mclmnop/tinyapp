@@ -3,12 +3,19 @@ const app = express();
 const PORT = 8080;
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+const cookieSession = require('cookie-session')
 
 
 //Parse the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', "ejs");
 app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['7f69fa85-caec-4d9c-acd7-eebdccb368d5', 'f13b4d38-41c4-46d3-9ef6-8836d03cd8eb'],
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}))
 
 const urlDatabase = {
   "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "ghj7tedh"},
@@ -52,7 +59,7 @@ const saveUserToDatabase = function(id, email, password) {
     email,
     password
   };
-  //console.log('newUser', newUser, Object.keys(users));
+  //console.log('newUser', newUser, 'db', users);
   return newUser;
 };
 
@@ -68,7 +75,8 @@ const findUser = function(email, users) {
 };
 
 const checkUserPassword = function(user, password) {
-  if (user.password === password) {
+  //if (user.password === password) {
+  if (bcrypt.compareSync(password, user.password)) {
     return true;
   }
   return false;
@@ -81,6 +89,7 @@ const deleteURLsFromDatabase = function(shortURL) {
 
 const checkIfUserLoggedIn = function(cookie) {
   if (cookie.user_id) {
+  //if (req.session.user_id) {
     return true;
   }
   return false;
@@ -98,22 +107,17 @@ const urlsForUser = (id) => {
   return usersUrls;
 };
 
+
+
 ///////-***********ROUTES***************
 
-
-
-
-app.post("/logout", (req, res) => {
-  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
-  res.clearCookie('user_id');
-  res.redirect('/login');
-});
 
 // says hello
 app.get('/', (req, res) => {
   res.send("Hello!");
 });
 
+//login page GET = enter credentials POST = verify credentials
 app.get('/login', (req, res) => {
   const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
   res.render("login", templateVars);
@@ -124,7 +128,8 @@ app.post("/login", (req, res) => {
   const currentUser = findUser(email, users);
   if (currentUser) {
     if (checkUserPassword(currentUser, pwd)) {
-      res.cookie('user_id', email);
+      req.session['user_id'] = newUser.email;
+      //res.cookie('user_id', email);
       res.redirect('/urls');
     } else {
       res.status(403).send('Bad password'); 
@@ -134,10 +139,16 @@ app.post("/login", (req, res) => {
   }
 });
 
+//logout - clears cookie
+app.post("/logout", (req, res) => {
+  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
+  res.clearCookie('user_id');
+  res.redirect('/login');
+});
 
-//registration form
+//registration form GET = register form, POST = Create new account
 app.get('/register', (req, res) => {
-  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
+  const templateVars =  { urls: urlDatabase, userInfo: req.session};
   res.render("register", templateVars);
 });
 
@@ -149,17 +160,20 @@ app.post('/register', (req, res) => {
   } else if (findUser(email, users)) {
     res.status(400).send('Already existing user');
   } else {
-    const newUser = saveUserToDatabase(randomID, email, pwd);
-    res.cookie('user_id', newUser.email);
+    const hashedPwd = bcrypt.hashSync(pwd, 10)
+    const newUser = saveUserToDatabase(randomID, email, hashedPwd);
+    req.session['user_id'] = newUser.email;
+    console.log(req.session['user_id'])
+    //res.cookie('user_id', newUser.email);
     res.redirect("/urls");
   }
 });
 
-//urls list
+//My URLS page GET = all urls filtered by user POST = add new URL
 app.get("/urls", (req, res) => {
   if (!checkIfUserLoggedIn(req.cookies)) {
     res.status(403).send('You can\'t access this page');
-    res.redirect('/login');
+    //res.redirect('/login');
   } else {
     const userCreds = findUser(req.cookies.user_id, users);
     const usersURLS = urlsForUser(userCreds.id);
@@ -167,20 +181,8 @@ app.get("/urls", (req, res) => {
     const templateVars =  { urls: usersURLS, userInfo: req.cookies};
     res.render('urls_index.ejs' , templateVars);
   }
-
 });
 
-// form to enter new URL
-app.get("/urls/new", (req, res) => {
-  if (!req.cookies.user_id) {
-    res.redirect('/login');
-    return;
-  }
-  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
-  res.render("urls_new", templateVars);
-});
-
-//takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL
 app.post("/urls", (req, res) => {
   if (!req.cookies.user_id) {
     res.redirect('/login');
@@ -193,28 +195,22 @@ app.post("/urls", (req, res) => {
   }
 });
 
-//shows content of tiny and long
-app.post("/urls/:shortURL/delete", (req, res) => {
-  if (checkIfUserLoggedIn(req.cookies)) {
-    const userData = findUser(req.cookies.user_id, users);
-    if (urlDatabase[req.params.shortURL].userID === userData.id ) {
-      deleteURLsFromDatabase(req.params.shortURL);
-      res.redirect('/urls');
-    } else {
-      res.status(403).send('Not allowed');
-    }
-  } else {
-    res.status(403).send('Not allowed');
+// form to enter new URL
+app.get("/urls/new", (req, res) => {
+  if (!req.cookies.user_id) {
+    res.redirect('/login');
+    return;
   }
-
-
+  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
+  res.render("urls_new", templateVars);
 });
 
-//shows content of tiny and long
+//Edit GET = edit URL form POST = edits already existing URL
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userInfo: req.cookies};
   res.render("urls_show", templateVars);
 });
+
 
 app.post("/urls/:shortURL", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
@@ -227,10 +223,24 @@ app.post("/urls/:shortURL", (req, res) => {
   } else {
     res.status(403).send('Not allowed');
   }
-
 });
 
-//redirects to long URL
+//delete URL
+app.post("/urls/:shortURL/delete", (req, res) => {
+  if (checkIfUserLoggedIn(req.cookies)) {
+    const userData = findUser(req.cookies.user_id, users);
+    if (urlDatabase[req.params.shortURL].userID === userData.id ) {
+      deleteURLsFromDatabase(req.params.shortURL);
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('Not allowed');
+    }
+  } else {
+    res.status(403).send('Not allowed');
+  }
+});
+
+//redirect to long URL
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   if (urlDatabase[shortURL]) {
