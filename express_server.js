@@ -127,8 +127,7 @@ app.post("/login", (req, res) => {
       res.cookie('user_id', email);
       res.redirect('/urls');
     } else {
-      res.status(403).send('Bad password');
-      
+      res.status(403).send('Bad password'); 
     }
   } else {
     res.status(403).send('User Not found');
@@ -190,14 +189,25 @@ app.post("/urls", (req, res) => {
     const shortURL = generateRandomString(req.body.longURL);
     const user = findUser(req.cookies.user_id, users);
     saveURLsToDatabase(shortURL, req.body.longURL, user.id);
-    res.redirect(`/urls/${shortURL}`);
+    res.redirect(`/urls`);
   }
 });
 
 //shows content of tiny and long
 app.post("/urls/:shortURL/delete", (req, res) => {
-  deleteURLsFromDatabase(req.params.shortURL);
-  res.redirect('/urls');
+  if (checkIfUserLoggedIn(req.cookies)) {
+    const userData = findUser(req.cookies.user_id, users);
+    if (urlDatabase[req.params.shortURL].userID === userData.id ) {
+      deleteURLsFromDatabase(req.params.shortURL);
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('Not allowed');
+    }
+  } else {
+    res.status(403).send('Not allowed');
+  }
+
+
 });
 
 //shows content of tiny and long
@@ -208,10 +218,16 @@ app.get("/urls/:shortURL", (req, res) => {
 
 app.post("/urls/:shortURL", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
-  urlDatabase[req.params.shortURL] = req.body.newURL;
-  saveURLsToDatabase(req.params.shortURL, req.body.newURL);
-  //console.log(urlDatabase);
-  res.redirect('/urls');
+  if (checkIfUserLoggedIn(req.cookies)) {
+    console.log(urlDatabase[req.params.shortURL])
+    urlDatabase[req.params.shortURL].longURL = req.body.newURL;
+    const user = findUser(req.cookies.user_id, users);
+    saveURLsToDatabase(req.params.shortURL, req.body.newURL, user.id);
+    res.redirect('/urls');
+  } else {
+    res.status(403).send('Not allowed');
+  }
+
 });
 
 //redirects to long URL
