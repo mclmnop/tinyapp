@@ -41,6 +41,8 @@ const users = {
   }
 };
 
+
+
 //generates 8 characters string for short url, calls the save to databe se funciton
 const generateRandomString = function() {
   const randomString = (Math.random() * 1e32).toString(36).substr(0,7);
@@ -101,6 +103,10 @@ const getUrlsForUser = (id) => {
 
 ///////-***********ROUTES***************
 
+app.get('/url_db', (req, res) => {
+  res.json(urlDatabase);
+});
+
 
 // says hello
 app.get('/', (req, res) => {
@@ -156,8 +162,6 @@ app.post('/register', (req, res) => {
     const hashedPwd = bcrypt.hashSync(pwd, 10)
     const newUser = saveUserToDatabase(randomID, email, hashedPwd);
     req.session['user_id'] = newUser.email;
-    console.log(req.session['user_id'])
-    //res.cookie('user_id', newUser.email);
     res.redirect("/urls");
   }
 });
@@ -204,7 +208,7 @@ app.get("/urls/:shortURL", (req, res) => {
     userid = findUser(req.session.user_id, users).id;
     usersUrls = getUrlsForUser(userid);
     if(usersUrls[req.params.shortURL]) {
-      const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userInfo: req.session};
+      const templateVars = { shortURL: req.params.shortURL, urlInfo: urlDatabase[req.params.shortURL], userInfo: req.session,};
       res.render("urls_show", templateVars);
     }
     else{
@@ -251,6 +255,31 @@ app.delete("/urls/:shortURL/delete", (req, res) => {
 //redirect to long URL
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
+
+  const timestamp = Date.now()
+  console.log(req.session['trackingID']);
+  //initialize the visit tracking array
+  if (!urlDatabase[shortURL].visits) {
+    urlDatabase[shortURL].visits = []
+  }
+
+  //if we already have a tracking cookie, update the visits with, if it's a new visitor, create a cookie and update
+  if(req.session['trackingID']) {
+    urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp, shortURL]);
+  } else {
+    req.session['trackingID'] = generateRandomString();
+    urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp, shortURL]);
+  }
+  
+  console.log(urlDatabase[shortURL].visits);
+
+
+  //if first visit to the shortURL, put 1 in the DB, otherwise increments 
+  urlDatabase[shortURL].totalVisits = urlDatabase[shortURL].totalVisits + 1 || 1;
+  //urlDatabase[shortURL].isits = 0;
+
+
+
   if (urlDatabase[shortURL]) {
     res.redirect(urlDatabase[shortURL].longURL);
   } else {
