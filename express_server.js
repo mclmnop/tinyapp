@@ -31,7 +31,7 @@ const users = {
     email: "user3@example.com",
     password: "dishwasher-9moineaux"
   }
-}
+};
 
 //generates 8 characters string for short url, calls the save to databe se funciton
 const generateRandomString = function() {
@@ -41,8 +41,8 @@ const generateRandomString = function() {
 
 //adds new key value pair to database object shortURL : LongURL
 const saveURLsToDatabase = function(shortURL, longURL, userID) {
-  urlDatabase[shortURL] = {longURL, userID}
-  console.log(urlDatabase)
+  urlDatabase[shortURL] = {longURL, userID};
+  console.log(urlDatabase);
   return urlDatabase;
 };
 
@@ -51,21 +51,22 @@ const saveUserToDatabase = function(id, email, password) {
     id,
     email,
     password
-  }
+  };
   //console.log('newUser', newUser, Object.keys(users));
   return newUser;
 };
 
+//check if user exist and if yes, returns user info
 const findUser = function(email, users) {
   const userArray = Object.keys(users);
-  for (key of userArray){
-    if (email === users[key].email)
-    {
-      return users[key]
+  for (const key of userArray) {
+    if (email === users[key].email) {
+      return users[key];
     }
-  };
+  }
   return false;
 };
+
 const checkUserPassword = function(user, password) {
   if (user.password === password) {
     return true;
@@ -78,6 +79,24 @@ const deleteURLsFromDatabase = function(shortURL) {
   return urlDatabase;
 };
 
+const checkIfUserLoggedIn = function(cookie) {
+  if (cookie.user_id) {
+    return true;
+  }
+  return false;
+};
+
+const urlsForUser = (id) => {
+  let usersUrls = {};
+  const urlsArray = Object.keys(urlDatabase);
+  for (const key of urlsArray) {
+    //console.log(urlDatabase[key].userID, id)
+    if (urlDatabase[key].userID === id) {
+      usersUrls[key] = urlDatabase[key];
+    }
+  }
+  return usersUrls;
+};
 
 ///////-***********ROUTES***************
 
@@ -87,7 +106,7 @@ const deleteURLsFromDatabase = function(shortURL) {
 app.post("/logout", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   res.clearCookie('user_id');
-  res.redirect('/urls');
+  res.redirect('/login');
 });
 
 // says hello
@@ -126,22 +145,30 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const randomID = generateRandomString();
   const {email, pwd} = req.body;
-  if(pwd === '') {
+  if (pwd === '') {
     res.status(400).send('No empty passwords allowed');
   } else if (findUser(email, users)) {
     res.status(400).send('Already existing user');
   } else {
-  const newUser = saveUserToDatabase(randomID, email, pwd);
-  res.cookie('user_id', newUser.email);
-  res.redirect("/urls");
+    const newUser = saveUserToDatabase(randomID, email, pwd);
+    res.cookie('user_id', newUser.email);
+    res.redirect("/urls");
   }
 });
 
 //urls list
 app.get("/urls", (req, res) => {
-  const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
-  console.log(req.cookies);
-  res.render('urls_index.ejs' , templateVars);
+  if (!checkIfUserLoggedIn(req.cookies)) {
+    res.status(403).send('You can\'t access this page');
+    res.redirect('/login');
+  } else {
+    const userCreds = findUser(req.cookies.user_id, users);
+    const usersURLS = urlsForUser(userCreds.id);
+    //console.log(usersURLS)
+    const templateVars =  { urls: usersURLS, userInfo: req.cookies};
+    res.render('urls_index.ejs' , templateVars);
+  }
+
 });
 
 // form to enter new URL
@@ -190,7 +217,6 @@ app.post("/urls/:shortURL", (req, res) => {
 //redirects to long URL
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL];
   if (urlDatabase[shortURL]) {
     res.redirect(urlDatabase[shortURL].longURL);
   } else {
