@@ -11,8 +11,8 @@ app.set('view engine', "ejs");
 app.use(cookieParser());
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "ghj7tedh"},
+  "9sm5xK": {longURL:"http://www.google.com", userID: "userRandomID"}
 };
 
 const users = {
@@ -25,6 +25,11 @@ const users = {
     id: "user2RandomID",
     email: "user2@example.com",
     password: "dishwasher-funk"
+  },
+  "user3RandomID": {
+    id: "user3RandomID",
+    email: "user3@example.com",
+    password: "dishwasher-9moineaux"
   }
 }
 
@@ -35,8 +40,9 @@ const generateRandomString = function() {
 };
 
 //adds new key value pair to database object shortURL : LongURL
-const saveURLsToDatabase = function(shortURL, longURL) {
-  urlDatabase[shortURL] = longURL;
+const saveURLsToDatabase = function(shortURL, longURL, userID) {
+  urlDatabase[shortURL] = {longURL, userID}
+  console.log(urlDatabase)
   return urlDatabase;
 };
 
@@ -140,16 +146,25 @@ app.get("/urls", (req, res) => {
 
 // form to enter new URL
 app.get("/urls/new", (req, res) => {
+  if (!req.cookies.user_id) {
+    res.redirect('/login');
+    return;
+  }
   const templateVars =  { urls: urlDatabase, userInfo: req.cookies};
   res.render("urls_new", templateVars);
-  //res.render("urls_new", templateVars);
 });
 
 //takes the user Input from urls/new, sends it to generate a short URL, and redirects to urls/newShort URL
 app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString(req.body.longURL);
-  saveURLsToDatabase(shortURL, req.body.longURL);
-  res.redirect(`/urls/${shortURL}`);
+  if (!req.cookies.user_id) {
+    res.redirect('/login');
+    return;
+  } else {
+    const shortURL = generateRandomString(req.body.longURL);
+    const user = findUser(req.cookies.user_id, users);
+    saveURLsToDatabase(shortURL, req.body.longURL, user.id);
+    res.redirect(`/urls/${shortURL}`);
+  }
 });
 
 //shows content of tiny and long
