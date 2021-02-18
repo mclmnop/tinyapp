@@ -4,7 +4,8 @@ const PORT = 8080;
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
-const { findUser } = require('./helpers')
+const { findUser } = require('./helpers');
+const methodOverride = require('method-override');
 
 
 //Parse the http request so that we can access the user input as req.body
@@ -15,6 +16,7 @@ app.use(cookieSession({
   keys: ['7f69fa85-caec-4d9c-acd7-eebdccb368d5', 'f13b4d38-41c4-46d3-9ef6-8836d03cd8eb'],
   maxAge: 24 * 60 * 60 * 1000 // 24 hours
 }))
+app.use(methodOverride('_method'))
 
 const urlDatabase = {
   "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "ghj7tedh"},
@@ -216,13 +218,14 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 
-app.post("/urls/:shortURL", (req, res) => {
+app.put("/urls/:shortURL", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   if (checkIfUserLoggedIn(req.session)) {
     //console.log(urlDatabase[req.params.shortURL])
     urlDatabase[req.params.shortURL].longURL = req.body.newURL;
     const user = findUser(req.session.user_id, users);
-    saveURLsToDatabase(req.params.shortURL, req.body.newURL, user.id);
+    //saveURLsToDatabase(req.params.shortURL, req.body.newURL, user.id);
+    urlDatabase[req.params.shortURL].longURL = req.body.newURL
     res.redirect('/urls');
   } else {
     res.status(403).send('Not allowed');
@@ -230,7 +233,8 @@ app.post("/urls/:shortURL", (req, res) => {
 });
 
 //delete URL
-app.post("/urls/:shortURL/delete", (req, res) => {
+app.delete("/urls/:shortURL/delete", (req, res) => {
+  console.log(req.params)
   if (checkIfUserLoggedIn(req.session)) {
     const userData = findUser(req.session.user_id, users);
     if (urlDatabase[req.params.shortURL].userID === userData.id ) {
