@@ -192,11 +192,13 @@ app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL];
   if (urlDatabase[shortURL]) {
-    res.redirect(longURL);
+    res.redirect(urlDatabase[shortURL].longURL);
+  } else {
+    res.writeHead(404, {"Content-Type": "text/plain"});
+    res.write("This short URL does not exist");
+    res.end();
   }
-  res.writeHead(404, {"Content-Type": "text/plain"});
-  res.write("This short URL does not exist");
-  res.end();
+
 });
 
 app.listen(PORT, () => {
