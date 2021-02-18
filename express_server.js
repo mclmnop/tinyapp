@@ -30,12 +30,12 @@ const users = {
   "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("dishwasher-funk",10)
   },
   "user3RandomID": {
     id: "user3RandomID",
     email: "user3@example.com",
-    password: "dishwasher-9moineaux"
+    password: bcrypt.hashSync("dishwasher-9moineaux",10)
   }
 };
 
@@ -83,7 +83,7 @@ const checkIfUserLoggedIn = function(cookie) {
   return false;
 };
 
-const urlsForUser = (id) => {
+const getUrlsForUser = (id) => {
   let usersUrls = {};
   const urlsArray = Object.keys(urlDatabase);
   for (const key of urlsArray) {
@@ -102,7 +102,11 @@ const urlsForUser = (id) => {
 
 // says hello
 app.get('/', (req, res) => {
-  res.send("Hello!");
+  if (!req.session.user_id) {
+    res.redirect('/login');
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 //login page GET = enter credentials POST = verify credentials
@@ -130,7 +134,7 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   req.session['user_id'] = null;
-  res.redirect('/login');
+  res.redirect('/urls');
 });
 
 //registration form GET = register form, POST = Create new account
@@ -159,11 +163,11 @@ app.post('/register', (req, res) => {
 //My URLS page GET = all urls filtered by user POST = add new URL
 app.get("/urls", (req, res) => {
   if (!checkIfUserLoggedIn(req.session)) {
-    res.status(403).send('You can\'t access this page');
+    res.status(403).send('You need to be logged in to access this page');
     //res.redirect('/login');
   } else {
     const userCreds = findUser(req.session.user_id, users);
-    const usersURLS = urlsForUser(userCreds.id);
+    const usersURLS = getUrlsForUser(userCreds.id);
     //console.log(usersURLS)
     const templateVars =  { urls: usersURLS, userInfo: req.session};
     res.render('urls_index.ejs' , templateVars);
@@ -172,13 +176,13 @@ app.get("/urls", (req, res) => {
 
 app.post("/urls", (req, res) => {
   if (!req.session.user_id) {
-    res.redirect('/login');
-    return;
+      res.status(403).send('Not allowed');
+      return;
   } else {
     const shortURL = generateRandomString(req.body.longURL);
     const user = findUser(req.session.user_id, users);
     saveURLsToDatabase(shortURL, req.body.longURL, user.id);
-    res.redirect(`/urls`);
+    res.redirect(`/urls/${shortURL}`);
   }
 });
 
@@ -194,15 +198,28 @@ app.get("/urls/new", (req, res) => {
 
 //Edit GET = edit URL form POST = edits already existing URL
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userInfo: req.session};
-  res.render("urls_show", templateVars);
+  if (checkIfUserLoggedIn(req.session)) {
+    userid = findUser(req.session.user_id, users).id;
+    usersUrls = getUrlsForUser(userid);
+    if(usersUrls[req.params.shortURL]) {
+      const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], userInfo: req.session};
+      res.render("urls_show", templateVars);
+    }
+    else{
+      res.status(403).send('Oops! Looks like this URL is not yours or does not exist');
+      return;
+    }
+    
+  } else{
+    res.status(403).send('You need to be logged in to access this page');
+  }
 });
 
 
 app.post("/urls/:shortURL", (req, res) => {
   //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   if (checkIfUserLoggedIn(req.session)) {
-    console.log(urlDatabase[req.params.shortURL])
+    //console.log(urlDatabase[req.params.shortURL])
     urlDatabase[req.params.shortURL].longURL = req.body.newURL;
     const user = findUser(req.session.user_id, users);
     saveURLsToDatabase(req.params.shortURL, req.body.newURL, user.id);
