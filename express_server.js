@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
 const { findUser } = require('./helpers');
 const methodOverride = require('method-override');
+const { signedCookie } = require("cookie-parser");
 
 
 //Parse the http request so that we can access the user input as req.body
@@ -99,7 +100,22 @@ const getUrlsForUser = (id) => {
   return usersUrls;
 };
 
-
+const countUniqueVisitors = function(shortURL, db) {
+  if (!db[shortURL].visits) {
+    return 0
+  } else {
+    let count = {}
+    console.log();
+    let visitorsArray = []
+    for (let visit of db[shortURL].visits) {
+      visitorsArray.push(visit[0]);
+    }
+    visitorsArray.forEach(function(i) { count[i] = (count[i]||0) + 1;});
+    console.log(count, 'visitor array', visitorsArray);
+    let uniqueVisitors = Object.keys(count);
+    return uniqueVisitors.length;
+  }
+}
 
 ///////-***********ROUTES***************
 
@@ -204,11 +220,15 @@ app.get("/urls/new", (req, res) => {
 
 //Edit GET = edit URL form POST = edits already existing URL
 app.get("/urls/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+
   if (checkIfUserLoggedIn(req.session)) {
     userid = findUser(req.session.user_id, users).id;
     usersUrls = getUrlsForUser(userid);
-    if(usersUrls[req.params.shortURL]) {
-      const templateVars = { shortURL: req.params.shortURL, urlInfo: urlDatabase[req.params.shortURL], userInfo: req.session,};
+    if(usersUrls[shortURL]) {
+      const uniqueVisitors = countUniqueVisitors(shortURL, urlDatabase);
+      //const uniqueVisitors = 25
+      const templateVars = { shortURL: shortURL, urlInfo: urlDatabase[req.params.shortURL], userInfo: req.session, uniVis: uniqueVisitors};
       res.render("urls_show", templateVars);
     }
     else{
@@ -277,7 +297,7 @@ app.get("/u/:shortURL", (req, res) => {
   //if first visit to the shortURL, put 1 in the DB, otherwise increments 
   urlDatabase[shortURL].totalVisits = urlDatabase[shortURL].totalVisits + 1 || 1;
   //urlDatabase[shortURL].isits = 0;
-
+  console.log(countUniqueVisitors(shortURL, urlDatabase));
 
 
   if (urlDatabase[shortURL]) {
