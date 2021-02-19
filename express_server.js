@@ -4,20 +4,24 @@ const PORT = 8080;
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
-const { findUser } = require('./helpers');
+const { findUser, generateRandomString, saveURLsToDatabase, saveUserToDatabase, checkUserPassword, deleteURLsFromDatabase, checkIfUserLoggedIn, getUrlsForUser, countUniqueVisitors } = require('./helpers');
 const methodOverride = require('method-override');
-const { signedCookie } = require("cookie-parser");
 
 
-//Parse the http request so that we can access the user input as req.body
+//Parses the http request so that we can access the user input as req.body
 app.use(bodyParser.urlencoded({extended: true}));
+
 app.set('view engine', "ejs");
+
+//Cookie creation
 app.use(cookieSession({
   name: 'session',
   keys: ['7f69fa85-caec-4d9c-acd7-eebdccb368d5', 'f13b4d38-41c4-46d3-9ef6-8836d03cd8eb'],
   maxAge: 24 * 60 * 60 * 1000 // 24 hours
-}))
-app.use(methodOverride('_method'))
+}));
+
+//Converts POST to PUT or DELETE
+app.use(methodOverride('_method'));
 
 const urlDatabase = {
   "b2xVn2": {longURL: "http://www.lighthouselabs.ca", userID: "ghj7tedh"},
@@ -43,88 +47,10 @@ const users = {
 };
 
 
-
-//generates 8 characters string for short url, calls the save to databe se funciton
-const generateRandomString = function() {
-  const randomString = (Math.random() * 1e32).toString(36).substr(0,7);
-  return randomString;
-};
-
-//adds new key value pair to database object shortURL : LongURL
-const saveURLsToDatabase = function(shortURL, longURL, userID) {
-  urlDatabase[shortURL] = {longURL, userID};
-  console.log(urlDatabase);
-  return urlDatabase;
-};
-
-const saveUserToDatabase = function(id, email, password) {
-  const newUser = users[id] = {
-    id,
-    email,
-    password
-  };
-  //console.log('newUser', newUser, 'db', users);
-  return newUser;
-};
-
-const checkUserPassword = function(user, password) {
-  //if (user.password === password) {
-  if (bcrypt.compareSync(password, user.password)) {
-    return true;
-  }
-  return false;
-};
-
-const deleteURLsFromDatabase = function(shortURL) {
-  delete urlDatabase[shortURL];
-  return urlDatabase;
-};
-
-const checkIfUserLoggedIn = function(cookie) {
-  if (cookie.user_id) {
-  //if (req.session.user_id) {
-    return true;
-  }
-  return false;
-};
-
-const getUrlsForUser = (id) => {
-  let usersUrls = {};
-  const urlsArray = Object.keys(urlDatabase);
-  for (const key of urlsArray) {
-    //console.log(urlDatabase[key].userID, id)
-    if (urlDatabase[key].userID === id) {
-      usersUrls[key] = urlDatabase[key];
-    }
-  }
-  return usersUrls;
-};
-
-const countUniqueVisitors = function(shortURL, db) {
-  if (!db[shortURL].visits) {
-    return 0
-  } else {
-    let count = {}
-    console.log();
-    let visitorsArray = []
-    for (let visit of db[shortURL].visits) {
-      visitorsArray.push(visit[0]);
-    }
-    visitorsArray.forEach(function(i) { count[i] = (count[i]||0) + 1;});
-    console.log(count, 'visitor array', visitorsArray);
-    let uniqueVisitors = Object.keys(count);
-    return uniqueVisitors.length;
-  }
-}
-
 ///////-***********ROUTES***************
 
-app.get('/url_db', (req, res) => {
-  res.json(urlDatabase);
-});
 
-
-// says hello
+// redirections  for GET /
 app.get('/', (req, res) => {
   if (!req.session.user_id) {
     res.redirect('/login');
@@ -133,7 +59,7 @@ app.get('/', (req, res) => {
   }
 });
 
-//login page GET = enter credentials POST = verify credentials
+//login page >>> GET = enter credentials, POST = verify credentials
 app.get('/login', (req, res) => {
   const templateVars =  { urls: urlDatabase, userInfo: req.session};
   res.render("login", templateVars);
@@ -147,7 +73,7 @@ app.post("/login", (req, res) => {
       req.session['user_id'] = email;
       res.redirect('/urls');
     } else {
-      res.status(403).send('Bad password'); 
+      res.status(403).send('Bad password');
     }
   } else {
     res.status(403).send('User Not found');
@@ -156,12 +82,11 @@ app.post("/login", (req, res) => {
 
 //logout - clears cookie
 app.post("/logout", (req, res) => {
-  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
   req.session['user_id'] = null;
   res.redirect('/urls');
 });
 
-//registration form GET = register form, POST = Create new account
+//registration form >>> GET = register form, POST = Create new account
 app.get('/register', (req, res) => {
   const templateVars =  { urls: urlDatabase, userInfo: req.session};
   res.render("register", templateVars);
@@ -175,22 +100,21 @@ app.post('/register', (req, res) => {
   } else if (findUser(email, users)) {
     res.status(400).send('Already existing user');
   } else {
-    const hashedPwd = bcrypt.hashSync(pwd, 10)
-    const newUser = saveUserToDatabase(randomID, email, hashedPwd);
+    const hashedPwd = bcrypt.hashSync(pwd, 10);
+    const newUser = saveUserToDatabase(randomID, email, hashedPwd, users);
     req.session['user_id'] = newUser.email;
     res.redirect("/urls");
   }
 });
 
-//My URLS page GET = all urls filtered by user POST = add new URL
+//My URLS page >>> GET = all urls filtered by user, POST = add new URL
 app.get("/urls", (req, res) => {
   if (!checkIfUserLoggedIn(req.session)) {
     res.status(403).send('You need to be logged in to access this page');
     //res.redirect('/login');
   } else {
     const userCreds = findUser(req.session.user_id, users);
-    const usersURLS = getUrlsForUser(userCreds.id);
-    //console.log(usersURLS)
+    const usersURLS = getUrlsForUser(userCreds.id, urlDatabase);
     const templateVars =  { urls: usersURLS, userInfo: req.session};
     res.render('urls_index.ejs' , templateVars);
   }
@@ -198,12 +122,12 @@ app.get("/urls", (req, res) => {
 
 app.post("/urls", (req, res) => {
   if (!req.session.user_id) {
-      res.status(403).send('Not allowed');
-      return;
+    res.status(403).send('Not allowed');
   } else {
     const shortURL = generateRandomString(req.body.longURL);
     const user = findUser(req.session.user_id, users);
-    saveURLsToDatabase(shortURL, req.body.longURL, user.id);
+    const creationDate = Date.now();
+    saveURLsToDatabase(shortURL, req.body.longURL, user.id, creationDate, urlDatabase);
     res.redirect(`/urls/${shortURL}`);
   }
 });
@@ -218,51 +142,47 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
-//Edit GET = edit URL form POST = edits already existing URL
+//Edit URl >>> GET = edit URL form, PUT = edits already existing URL
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
 
   if (checkIfUserLoggedIn(req.session)) {
-    userid = findUser(req.session.user_id, users).id;
-    usersUrls = getUrlsForUser(userid);
-    if(usersUrls[shortURL]) {
+    //finds user id and creates object with all his urls
+    let userid = findUser(req.session.user_id, users).id;
+    let usersUrls = getUrlsForUser(userid, urlDatabase);
+
+    //checks if requested is in fact owned by requester 
+    if (usersUrls[shortURL]) {
+      //add unique visitor count to template and render template
       const uniqueVisitors = countUniqueVisitors(shortURL, urlDatabase);
-      //const uniqueVisitors = 25
       const templateVars = { shortURL: shortURL, urlInfo: urlDatabase[req.params.shortURL], userInfo: req.session, uniVis: uniqueVisitors};
       res.render("urls_show", templateVars);
-    }
-    else{
+    } else {
       res.status(403).send('Oops! Looks like this URL is not yours or does not exist');
       return;
     }
-    
-  } else{
+  //if user was not logged in at all
+  } else {
     res.status(403).send('You need to be logged in to access this page');
   }
 });
 
-
 app.put("/urls/:shortURL", (req, res) => {
-  //console.log(urlDatabase[req.params.shortURL], req.body.newURL)
+  // if user is logged in
   if (checkIfUserLoggedIn(req.session)) {
-    //console.log(urlDatabase[req.params.shortURL])
+    //change long URL with new content
     urlDatabase[req.params.shortURL].longURL = req.body.newURL;
-    const user = findUser(req.session.user_id, users);
-    //saveURLsToDatabase(req.params.shortURL, req.body.newURL, user.id);
-    urlDatabase[req.params.shortURL].longURL = req.body.newURL
     res.redirect('/urls');
   } else {
     res.status(403).send('Not allowed');
   }
 });
 
-//delete URL
 app.delete("/urls/:shortURL/delete", (req, res) => {
-  console.log(req.params)
   if (checkIfUserLoggedIn(req.session)) {
     const userData = findUser(req.session.user_id, users);
-    if (urlDatabase[req.params.shortURL].userID === userData.id ) {
-      deleteURLsFromDatabase(req.params.shortURL);
+    if (urlDatabase[req.params.shortURL].userID === userData.id) {
+      deleteURLsFromDatabase(req.params.shortURL, urlDatabase);
       res.redirect('/urls');
     } else {
       res.status(403).send('Not allowed');
@@ -275,32 +195,28 @@ app.delete("/urls/:shortURL/delete", (req, res) => {
 //redirect to long URL
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
+  const timestamp = Date.now();
 
-  const timestamp = Date.now()
-  console.log(req.session['trackingID']);
-  //initialize the visit tracking array
-  if (!urlDatabase[shortURL].visits) {
-    urlDatabase[shortURL].visits = []
-  }
-
-  //if we already have a tracking cookie, update the visits with, if it's a new visitor, create a cookie and update
-  if(req.session['trackingID']) {
-    urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp, shortURL]);
-  } else {
-    req.session['trackingID'] = generateRandomString();
-    urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp, shortURL]);
-  }
-  
-  console.log(urlDatabase[shortURL].visits);
-
-
-  //if first visit to the shortURL, put 1 in the DB, otherwise increments 
-  urlDatabase[shortURL].totalVisits = urlDatabase[shortURL].totalVisits + 1 || 1;
-  //urlDatabase[shortURL].isits = 0;
-  console.log(countUniqueVisitors(shortURL, urlDatabase));
-
-
+  //check if url exists
   if (urlDatabase[shortURL]) {
+    
+    //initialize the visitor tracking array
+    if (!urlDatabase[shortURL].visits) {
+      urlDatabase[shortURL].visits = [];
+    }
+  
+    //if we already have a tracking cookie, update the visit list without creating a new onw
+    if (req.session['trackingID']) {
+      urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp]);
+    } else {
+      req.session['trackingID'] = generateRandomString();
+      urlDatabase[shortURL].visits.push([req.session.trackingID, timestamp]);
+    }
+    
+    //if first visit to the shortURL, put 1 in the DB, otherwise increments
+    urlDatabase[shortURL].totalVisits = urlDatabase[shortURL].totalVisits + 1 || 1;
+
+    //All the above should be a helper function but no time, user get redirected to the webwsite
     res.redirect(urlDatabase[shortURL].longURL);
   } else {
     res.writeHead(404, {"Content-Type": "text/plain"});
